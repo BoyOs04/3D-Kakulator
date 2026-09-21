@@ -1,0 +1,489 @@
+/*
+ * 3D Kakulator — Layout
+ * Purpose:
+ * - Page-level composition
+ * - Main application regions
+ * - 3D viewport sizing
+ * - Calculator/content columns
+ * - Responsive layout behavior
+ *
+ * Component appearance belongs in components.css.
+ * Visual motion belongs in animations.css.
+ */
+
+/* =========================================================
+   1. APPLICATION SHELL
+   ========================================================= */
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/*
+ * Keeps the application usable while the JS/3D scene
+ * initializes. The actual shell can be enhanced later
+ * by JavaScript without changing this foundation.
+ */
+.app {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* =========================================================
+   2. PAGE REGIONS
+   ========================================================= */
+
+.app-header,
+.app-main,
+.app-footer {
+  min-width: 0;
+}
+
+.app-header {
+  width: 100%;
+  position: relative;
+  z-index: 20;
+}
+
+.app-main {
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.app-footer {
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+/* =========================================================
+   3. MAIN WORKSPACE
+   ========================================================= */
+
+.workspace {
+  width: min(100%, var(--content-max-width));
+  min-width: 0;
+  min-height: 0;
+  margin-inline: auto;
+  padding: var(--space-6);
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.workspace--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace--calculator-first {
+  grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+}
+
+/* =========================================================
+   4. APPLICATION PANELS
+   ========================================================= */
+
+.panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel--fill {
+  height: 100%;
+}
+
+.panel-header,
+.panel-body,
+.panel-footer {
+  min-width: 0;
+}
+
+.panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* =========================================================
+   5. 3D VIEWPORT REGION
+   ========================================================= */
+
+.viewport {
+  min-width: 0;
+  min-height: 20rem;
+  height: 100%;
+  position: relative;
+  display: flex;
+  isolation: isolate;
+}
+
+.viewport > .three-surface {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+ * Overlay is intentionally independent from the Three.js canvas.
+ * This keeps controls accessible to HTML and prevents UI elements
+ * from becoming part of the rendering pipeline.
+ */
+.viewport-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.viewport-overlay > * {
+  pointer-events: auto;
+}
+
+.viewport-overlay--top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.viewport-overlay--bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* =========================================================
+   6. CALCULATOR REGION
+   ========================================================= */
+
+.calculator {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.calculator-display {
+  min-width: 0;
+}
+
+.calculator-keypad {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.calculator-keypad--five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.calculator-keypad--scientific {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.calculator-history {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* =========================================================
+   7. SIDEBAR / CONTROL COLUMN
+   ========================================================= */
+
+.sidebar {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sidebar-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* =========================================================
+   8. TOOLBAR / ACTION GROUPS
+   ========================================================= */
+
+.toolbar {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.toolbar-start,
+.toolbar-end {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.toolbar-end {
+  margin-inline-start: auto;
+}
+
+/* =========================================================
+   9. FULL-WIDTH CONTENT UTILITIES
+   ========================================================= */
+
+.container {
+  width: min(100% - 2rem, var(--content-max-width));
+  margin-inline: auto;
+}
+
+.container--wide {
+  width: min(100% - 2rem, 96rem);
+  margin-inline: auto;
+}
+
+.container--narrow {
+  width: min(100% - 2rem, 52rem);
+  margin-inline: auto;
+}
+
+/* =========================================================
+   10. STACKED / SPLIT LAYOUTS
+   ========================================================= */
+
+.split {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.split--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.split--sidebar {
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+}
+
+.content-stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* =========================================================
+   11. OVERFLOW & SCROLL CONTAINMENT
+   ========================================================= */
+
+.scroll-x {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+}
+
+.scroll-y {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.scroll-contain {
+  contain: layout paint;
+}
+
+/* =========================================================
+   12. RESPONSIVE BREAKPOINTS
+   ========================================================= */
+
+@media (max-width: 1024px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace--calculator-first {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .viewport {
+    min-height: clamp(18rem, 55vw, 34rem);
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .split--sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  #app,
+  .app {
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .workspace {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .viewport {
+    min-height: 18rem;
+  }
+
+  .viewport-overlay--top,
+  .viewport-overlay--bottom {
+    padding: var(--space-3);
+  }
+
+  .split,
+  .split--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .container,
+  .container--wide,
+  .container--narrow {
+    width: min(100% - 1rem, var(--content-max-width));
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbar-start,
+  .toolbar-end {
+    width: 100%;
+  }
+
+  .toolbar-end {
+    margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .viewport {
+    min-height: 16rem;
+  }
+
+  .calculator-keypad {
+    gap: 0.375rem;
+  }
+
+  .viewport-overlay--top,
+  .viewport-overlay--bottom {
+    padding: var(--space-2);
+  }
+}
+
+/* =========================================================
+   13. LANDSCAPE MOBILE
+   ========================================================= */
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.1fr) minmax(15rem, 0.9fr);
+  }
+
+  .workspace--single,
+  .workspace--calculator-first {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .viewport {
+    min-height: 15rem;
+  }
+}
+
+/* =========================================================
+   14. POINTER / TOUCH OPTIMIZATION
+   ========================================================= */
+
+@media (pointer: coarse) {
+  .scroll-y,
+  .sidebar-scroll,
+  .calculator-history {
+    scrollbar-width: none;
+  }
+
+  .scroll-y::-webkit-scrollbar,
+  .sidebar-scroll::-webkit-scrollbar,
+  .calculator-history::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* =========================================================
+   15. PRINT LAYOUT
+   ========================================================= */
+
+@media print {
+  #app,
+  .app {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .workspace {
+    width: 100%;
+    display: block;
+    padding: 0;
+  }
+
+  .viewport {
+    min-height: 0;
+  }
+}
+
+/* =========================================================
+   16. REDUCED-MOTION / LOW-RESOURCE LAYOUT
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .viewport,
+  .panel,
+  .workspace {
+    scroll-behavior: auto;
+  }
+}
