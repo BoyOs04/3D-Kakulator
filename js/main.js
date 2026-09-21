@@ -4,6 +4,10 @@ import {
   THREE_REVISION,
 } from "./three-scene.js";
 import { AnimationController } from "./animations.js";
+import {
+  SettingsManager,
+  SettingsKey,
+} from "./settings.js";
 import { UIController } from "./ui.js";
 
 /**
@@ -11,15 +15,12 @@ import { UIController } from "./ui.js";
  *
  * main.js is intentionally small:
  * - create application services
+ * - restore persistent settings
  * - wire modules together
  * - start the application
  * - own global lifecycle
  *
- * Static structure lives in index.html.
- * Calculator logic lives in calculator.js.
- * DOM behavior lives in ui.js.
- * 3D rendering lives in three-scene.js.
- * Motion helpers live in animations.js.
+ * Feature logic belongs to the owning modules.
  */
 
 export const APP_VERSION = "0.1.0";
@@ -34,10 +35,13 @@ export const calculator = new CalculatorEngine({
   maxHistory: 20,
 });
 
+export const settings = new SettingsManager();
+
 export const appContext = {
   version: APP_VERSION,
   state: appState,
   calculator,
+  settings,
   ui: null,
   animation: null,
   threeScene: null,
@@ -47,6 +51,7 @@ export const appContext = {
     this.ui?.destroy();
     this.animation?.destroy();
     this.threeScene?.destroy();
+    this.settings?.destroy();
     this.calculator.destroy();
 
     this.ui = null;
@@ -65,8 +70,14 @@ function createApplication() {
     throw new Error("Container #app tidak ditemukan.");
   }
 
+  const runtime = settings.getRuntimeProfile();
+
+  appState.sceneEnabled = runtime.sceneEnabled;
+  appState.fpsEnabled = runtime.fpsEnabled;
+
   const animation = new AnimationController({
     root,
+    reducedMotion: runtime.reducedMotion,
   });
 
   let threeScene = null;
@@ -75,27 +86,40 @@ function createApplication() {
     root,
     calculator,
     animationController: animation,
+
     onSceneToggle(enabled) {
-      appState.sceneEnabled = Boolean(enabled);
-      threeScene?.setEnabled(appState.sceneEnabled);
+      settings.set(
+        SettingsKey.SCENE_ENABLED,
+        enabled,
+      );
     },
+
     onFPSToggle(enabled) {
-      appState.fpsEnabled = Boolean(enabled);
-
-      const fpsElement = root.querySelector("#fps-counter");
-
-      if (fpsElement) {
-        fpsElement.hidden = !appState.fpsEnabled;
-      }
+      settings.set(
+        SettingsKey.FPS_ENABLED,
+        enabled,
+      );
     },
   });
 
   ui.bind();
 
+  /*
+   * Restore persisted UI state before creating the 3D controller.
+   * UIController owns the actual DOM controls; SettingsManager owns
+   * persistence and normalization.
+   */
+  ui.elements.sceneToggle.checked =
+    runtime.sceneEnabled;
+
+  ui.elements.fpsToggle.checked =
+    runtime.fpsEnabled;
+
   threeScene = new ThreeSceneController({
     container: ui.elements.sceneContainer,
     fpsElement: ui.elements.fps,
     state: appState,
+
     onCalculatorKey(key) {
       calculator.press(key);
     },
@@ -110,6 +134,45 @@ function createApplication() {
   appContext.animation = animation;
   appContext.threeScene = threeScene;
 
+  /*
+   * Settings are the single source of truth for persistent preferences.
+   * UI events update SettingsManager; SettingsManager changes update
+   * application state and the corresponding runtime services.
+   */
+  const unsubscribeSettings = settings.subscribe(
+    ({ runtime: nextRuntime }) => {
+      appState.sceneEnabled =
+        nextRuntime.sceneEnabled;
+
+      appState.fpsEnabled =
+        nextRuntime.fpsEnabled;
+
+      ui.syncSettings({
+        sceneEnabled:
+          nextRuntime.sceneEnabled,
+        fpsEnabled:
+          nextRuntime.fpsEnabled,
+      });
+
+      threeScene?.setEnabled(
+        nextRuntime.sceneEnabled,
+      );
+
+      animation.reducedMotion =
+        nextRuntime.reducedMotion;
+
+      const fpsElement = ui.elements.fps;
+
+      if (fpsElement) {
+        fpsElement.hidden =
+          !nextRuntime.fpsEnabled;
+      }
+    },
+  );
+
+  appContext.unsubscribeSettings =
+    unsubscribeSettings;
+
   synchronizeInitialState();
   markApplicationReady();
 
@@ -117,21 +180,39 @@ function createApplication() {
 }
 
 function synchronizeInitialState() {
-  const {
-    ui,
-  } = appContext;
+  const { ui } = appContext;
 
   if (!ui) {
     return;
   }
 
+  /*
+   * Do not overwrite restored settings with HTML defaults.
+   * SettingsManager remains the source of truth.
+   */
+  const runtime = settings.getRuntimeProfile();
+
   appState.sceneEnabled =
-    ui.elements.sceneToggle.checked;
+    runtime.sceneEnabled;
 
   appState.fpsEnabled =
-    ui.elements.fpsToggle.checked;
+    runtime.fpsEnabled;
 
-  ui.sync();
+  ui.syncSettings({
+    sceneEnabled:
+      runtime.sceneEnabled,
+    fpsEnabled:
+      runtime.fpsEnabled,
+  });
+
+  appContext.threeScene?.setEnabled(
+    runtime.sceneEnabled,
+  );
+
+  if (appContext.animation) {
+    appContext.animation.reducedMotion =
+      runtime.reducedMotion;
+  }
 }
 
 function markApplicationReady() {
@@ -159,7 +240,6 @@ function showFatalError(error) {
       : "Unknown error";
 
   root.dataset.appReady = "false";
-
   root.innerHTML = "";
 
   const section = document.createElement("section");
