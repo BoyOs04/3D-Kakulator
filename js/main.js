@@ -1,14 +1,14 @@
-import { CalculatorEngine } from "./calculator.js";
+import { CalculatorEngine } from "./calculator.js?v=0.1.1";
 import {
   ThreeSceneController,
   THREE_REVISION,
-} from "./three-scene.js";
-import { AnimationController } from "./animations.js";
+} from "./three-scene.js?v=0.1.1";
+import { AnimationController } from "./animations.js?v=0.1.1";
 import {
   SettingsManager,
   SettingsKey,
-} from "./settings.js";
-import { UIController } from "./ui.js";
+} from "./settings.js?v=0.1.1";
+import { UIController } from "./ui.js?v=0.1.1";
 
 /**
  * 3D Kakulator — Application Bootstrap
@@ -23,7 +23,7 @@ import { UIController } from "./ui.js";
  * Feature logic belongs to the owning modules.
  */
 
-export const APP_VERSION = "0.1.0";
+export const APP_VERSION = "0.1.1";
 export { THREE_REVISION };
 
 export const appState = {
