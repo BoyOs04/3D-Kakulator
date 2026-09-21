@@ -121,6 +121,7 @@ function createApplication() {
     container: ui.elements.sceneContainer,
     fpsElement: ui.elements.fps,
     state: appState,
+    runtimeProfile: runtime,
 
     onCalculatorKey(key) {
       calculator.press(key);
@@ -128,6 +129,7 @@ function createApplication() {
   });
 
   threeScene.init();
+  threeScene.applySettings(runtime);
   threeScene.setEnabled(appState.sceneEnabled);
 
   ui.attachThreeScene(threeScene);
@@ -156,6 +158,7 @@ function createApplication() {
           nextRuntime.fpsEnabled,
       });
 
+      threeScene?.applySettings(nextRuntime);
       threeScene?.setEnabled(
         nextRuntime.sceneEnabled,
       );
