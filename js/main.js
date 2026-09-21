@@ -48,6 +48,7 @@ export const appContext = {
   initialized: false,
 
   destroy() {
+    this.unsubscribeSettings?.();
     this.ui?.destroy();
     this.animation?.destroy();
     this.threeScene?.destroy();
@@ -57,6 +58,7 @@ export const appContext = {
     this.ui = null;
     this.animation = null;
     this.threeScene = null;
+    this.unsubscribeSettings = null;
     this.initialized = false;
 
     document.documentElement.removeAttribute("data-app-ready");
