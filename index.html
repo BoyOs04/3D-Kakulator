@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive 3D calculator built with Three.js.">
+  <meta name="theme-color" content="#0b0d12">
+  <title>3D Kakulator</title>
+
+  <link rel="icon" href="./favicon.ico">
+
+  <!-- Pinned Three.js version for reproducible browser builds. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="app" aria-label="3D Kakulator">
+    <noscript>
+      JavaScript diperlukan untuk menjalankan 3D Kakulator.
+    </noscript>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
