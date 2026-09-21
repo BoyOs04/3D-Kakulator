@@ -432,7 +432,7 @@ function bindEvents() {
 }
 
 function initializeThreeScene() {
-  const scene = new (appContext.threeScene = ThreeSceneController)({
+  const scene = new ThreeSceneController({
     container: appContext.elements.sceneContainer,
     fpsElement: appContext.elements.fps,
     state,
@@ -441,7 +441,6 @@ function initializeThreeScene() {
 
   scene.init();
   appContext.threeScene = scene;
-
   scene.setEnabled(state.sceneEnabled);
 }
 
