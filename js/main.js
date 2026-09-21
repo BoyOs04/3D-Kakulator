@@ -1362,7 +1362,7 @@ function createPlant(parent) {
 
 function create3DCalculator(scene) {
   const calculator = new THREE.Group();
-  calculator.position.set(0, 2.42, 0.12);
+  calculator.position.set(0, 2.62, 0.12);
   calculator.rotation.x = THREE.MathUtils.degToRad(7);
   scene.add(calculator);
 
@@ -1802,7 +1802,7 @@ function animate3DCalculator(calculator, delta, reducedMotion) {
     Math.sin(time * 0.32) * THREE.MathUtils.degToRad(0.55);
 
   calculator.group.position.y =
-    2.42 + Math.sin(time * 0.75) * 0.018;
+    2.62 + Math.sin(time * 0.75) * 0.018;
 
   calculator.accent.material.emissiveIntensity =
     0.55 + Math.sin(time * 1.8) * 0.1;
