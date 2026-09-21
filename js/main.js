@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { CalculatorEngine } from "./calculator.js";
 
 /**
  * 3D Kakulator
@@ -56,11 +57,29 @@ const CALCULATOR_KEYS = [
 const state = {
   expression: "",
   result: "0",
+  numericResult: 0,
   justEvaluated: false,
+  error: null,
   history: [],
   sceneEnabled: true,
   fpsEnabled: true,
 };
+
+const calculator = new CalculatorEngine({
+  maxHistory: 20,
+});
+
+calculator.subscribe((snapshot) => {
+  state.expression = snapshot.expression;
+  state.result = snapshot.result;
+  state.numericResult = snapshot.numericResult;
+  state.justEvaluated = snapshot.justEvaluated;
+  state.error = snapshot.error;
+  state.history = snapshot.history;
+
+  updateDisplay();
+  renderHistory();
+});
 
 const appContext = {
   version: APP_VERSION,
@@ -482,97 +501,11 @@ function formatNumber(value) {
 }
 
 function handleKey(key) {
-  if (key.action === "clear") {
-    state.expression = "";
-    state.result = "0";
-    state.justEvaluated = false;
-    updateDisplay();
-    return;
-  }
-
-  if (key.action === "delete") {
-    state.expression = state.expression.slice(0, -1);
-    state.justEvaluated = false;
-    updateDisplay();
-    return;
-  }
-
-  if (key.action === "percent") {
-    if (!state.expression) return;
-    state.expression += "%";
-    state.justEvaluated = false;
-    updateDisplay();
-    return;
-  }
-
-  if (key.action === "sign") {
-    if (!state.expression) {
-      state.expression = "-";
-    } else if (/(-?\d*\.?\d+)$/.test(state.expression)) {
-      state.expression = state.expression.replace(
-        /(-?\d*\.?\d+)$/,
-        (match) => match.startsWith("-") ? match.slice(1) : `-${match}`,
-      );
-    }
-    updateDisplay();
-    return;
-  }
-
-  if (key.action === "equals") {
-    calculate();
-    return;
-  }
-
-  if (state.justEvaluated && (key.type === "number" || key.value === ".")) {
-    state.expression = "";
-    state.justEvaluated = false;
-  }
-
-  if (key.type === "operator") {
-    const last = state.expression.slice(-1);
-
-    if (!state.expression && key.value !== "-") {
-      return;
-    }
-
-    if (/[+\-*/]$/.test(last)) {
-      state.expression = state.expression.slice(0, -1);
-    }
-  }
-
-  state.expression += key.value ?? "";
-  state.justEvaluated = false;
-  updateDisplay();
+  return calculator.press(key);
 }
 
 function calculate() {
-  if (!state.expression.trim()) {
-    return;
-  }
-
-  try {
-    const expression = state.expression;
-    const value = evaluateExpression(expression);
-    const result = formatNumber(value);
-
-    state.history.unshift({
-      expression,
-      result,
-      timestamp: new Date(),
-    });
-
-    state.history = state.history.slice(0, 20);
-    state.result = result;
-    state.expression = String(value);
-    state.justEvaluated = true;
-
-    updateDisplay();
-    renderHistory();
-  } catch {
-    state.result = "Error";
-    state.justEvaluated = true;
-    updateDisplay();
-  }
+  return calculator.calculate();
 }
 
 function updateDisplay() {
@@ -582,6 +515,7 @@ function updateDisplay() {
 
   appContext.elements.expression.textContent = state.expression || "Ready";
   appContext.elements.result.textContent = state.result;
+  appContext.elements.result.title = state.error || "";
   update3DDisplay();
 }
 
@@ -609,10 +543,10 @@ function renderHistory() {
       },
       listeners: {
         click: () => {
-          state.expression = item.result.replace(/\./g, "").replace(",", ".");
-          state.result = item.result;
-          state.justEvaluated = true;
-          updateDisplay();
+          const index = state.history.findIndex((entry) => entry.id === item.id);
+          if (index >= 0) {
+            calculator.recallHistory(index);
+          }
         },
       },
     }, [
@@ -626,13 +560,13 @@ function renderHistory() {
       }),
     ]);
 
+    entry.dataset.index = String(state.history.indexOf(item));
     list.append(entry);
   }
 }
 
 function clearHistory() {
-  state.history = [];
-  renderHistory();
+  calculator.clearHistory();
 }
 
 function toggleMenu() {
@@ -684,35 +618,25 @@ function initCalculatorKeyboard() {
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
-    if (/^[0-9.]$/.test(event.key)) {
-      handleKey({ value: event.key, type: "number" });
-      return;
-    }
+    const supportedKeys = new Set([
+      "Enter",
+      "=",
+      "Backspace",
+      "Escape",
+      "%",
+      ".",
+      "+",
+      "-",
+      "*",
+      "/",
+    ]);
 
-    const operators = {
-      "+": "+",
-      "-": "-",
-      "*": "*",
-      "/": "/",
-    };
+    if (/^[0-9]$/.test(event.key) || supportedKeys.has(event.key)) {
+      if (["Enter", "=", "Backspace", "Escape"].includes(event.key)) {
+        event.preventDefault();
+      }
 
-    if (operators[event.key]) {
-      handleKey({
-        value: operators[event.key],
-        type: "operator",
-      });
-      return;
-    }
-
-    if (event.key === "Enter" || event.key === "=") {
-      event.preventDefault();
-      calculate();
-    } else if (event.key === "Backspace") {
-      handleKey({ action: "delete", type: "action" });
-    } else if (event.key === "Escape") {
-      handleKey({ action: "clear", type: "action" });
-    } else if (event.key === "%") {
-      handleKey({ action: "percent", type: "action" });
+      calculator.handleKeyboardKey(event.key);
     }
   });
 }
