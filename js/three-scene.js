@@ -18,6 +18,9 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
  * Calculator input is emitted through the onCalculatorKey callback.
  */
 
+export const THREE_VERSION = "0.186.0";
+export const THREE_REVISION = "r186";
+
 export class ThreeSceneController {
   constructor({
     container,
