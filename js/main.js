@@ -459,47 +459,6 @@ function createCalculatorKey(key) {
   });
 }
 
-function sanitizeExpression(expression) {
-  return expression
-    .replace(/[×]/g, "*")
-    .replace(/[÷]/g, "/")
-    .replace(/,/g, ".")
-    .replace(/[^0-9+\-*/().%\s]/g, "");
-}
-
-function evaluateExpression(expression) {
-  const safe = sanitizeExpression(expression)
-    .replace(/%/g, "/100")
-    .trim();
-
-  if (!safe) {
-    return 0;
-  }
-
-  if (!/[0-9)]$/.test(safe)) {
-    throw new Error("Incomplete expression");
-  }
-
-  // Deliberately limited to the calculator's own sanitized arithmetic input.
-  const result = Function(`"use strict"; return (${safe});`)();
-
-  if (!Number.isFinite(result)) {
-    throw new Error("Invalid result");
-  }
-
-  return result;
-}
-
-function formatNumber(value) {
-  if (!Number.isFinite(value)) {
-    return "Error";
-  }
-
-  return new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 12,
-  }).format(value);
-}
-
 function handleKey(key) {
   return calculator.press(key);
 }
