@@ -62,6 +62,9 @@ export class ThreeSceneController {
     this.running = true;
     this.autoPauseWhenHidden =
       this.runtimeProfile.autoPauseWhenHidden ?? true;
+    this.currentPixelRatio = null;
+    this.currentShadowEnabled = null;
+    this.currentShadowMapSize = null;
     this.reducedMotion =
       Boolean(this.runtimeProfile.reducedMotion);
 
@@ -114,11 +117,16 @@ export class ThreeSceneController {
       isCoarsePointer ? 1.5 : 2,
     );
 
-    this.renderer.setPixelRatio(
+    const initialPixelRatio =
       Number.isFinite(this.runtimeProfile.pixelRatio)
         ? this.runtimeProfile.pixelRatio
-        : defaultPixelRatio,
+        : defaultPixelRatio;
+
+    this.renderer.setPixelRatio(
+      initialPixelRatio,
     );
+
+    this.currentPixelRatio = initialPixelRatio;
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -429,10 +437,17 @@ export class ThreeSceneController {
       Boolean(this.runtimeProfile.reducedMotion);
 
     if (this.renderer) {
-      if (Number.isFinite(this.runtimeProfile.pixelRatio)) {
+      if (
+        Number.isFinite(this.runtimeProfile.pixelRatio) &&
+        this.runtimeProfile.pixelRatio !==
+          this.currentPixelRatio
+      ) {
         this.renderer.setPixelRatio(
           this.runtimeProfile.pixelRatio,
         );
+
+        this.currentPixelRatio =
+          this.runtimeProfile.pixelRatio;
       }
 
       this.setShadowQuality(
@@ -527,6 +542,20 @@ export class ThreeSceneController {
           ? 512
           : 0;
 
+    if (
+      this.currentShadowEnabled ===
+        shadowsEnabled &&
+      this.currentShadowMapSize ===
+        shadowMapSize
+    ) {
+      return;
+    }
+
+    this.currentShadowEnabled =
+      shadowsEnabled;
+    this.currentShadowMapSize =
+      shadowMapSize;
+
     this.scene?.traverse((object) => {
       if (
         !object.isLight ||
@@ -537,16 +566,16 @@ export class ThreeSceneController {
 
       object.castShadow = shadowsEnabled;
 
+      if (object.shadow.map) {
+        object.shadow.map.dispose();
+        object.shadow.map = null;
+      }
+
       if (shadowsEnabled && shadowMapSize > 0) {
         object.shadow.mapSize.set(
           shadowMapSize,
           shadowMapSize,
         );
-
-        if (object.shadow.map) {
-          object.shadow.map.dispose();
-          object.shadow.map = null;
-        }
       }
     });
 
