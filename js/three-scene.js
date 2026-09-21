@@ -1197,41 +1197,6 @@ function createDisplayTexture() {
   return texture;
 }
 
-function update3DDisplay() {
-  const texture = appContext.threeDisplayTexture;
-
-  if (!texture?.userData?.context) {
-    return;
-  }
-
-  const { canvas, context } = texture.userData;
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#b9d3bf";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  context.fillStyle = "#1e3526";
-  context.font = "600 30px system-ui, sans-serif";
-  context.textAlign = "left";
-  context.textBaseline = "top";
-  context.fillText(
-    (state.expression || "READY").slice(-29),
-    28,
-    28,
-  );
-
-  context.font = "700 66px ui-monospace, SFMono-Regular, Menlo, monospace";
-  context.textAlign = "right";
-  context.textBaseline = "bottom";
-  context.fillText(
-    state.result.slice(0, 18),
-    canvas.width - 24,
-    canvas.height - 24,
-  );
-
-  texture.needsUpdate = true;
-}
-
 function createTextTexture(
   text,
   font,
