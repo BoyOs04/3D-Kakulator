@@ -3,11 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive 3D calculator built with Three.js.">
+  <meta
+    name="description"
+    content="Kalkulator scientific 3D interaktif berbasis Three.js."
+  >
   <meta name="theme-color" content="#0b0d12">
+  <meta name="color-scheme" content="dark">
   <title>3D Kakulator</title>
 
   <link rel="icon" href="./favicon.ico">
+
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/layout.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/animations.css">
 
   <!-- Pinned Three.js version for reproducible browser builds. -->
   <script type="importmap">
@@ -19,12 +28,274 @@
     }
   </script>
 </head>
+
 <body>
-  <main id="app" aria-label="3D Kakulator">
+  <div id="app" class="app-shell" data-app-ready="false">
     <noscript>
       JavaScript diperlukan untuk menjalankan 3D Kakulator.
     </noscript>
-  </main>
+
+    <div class="app" data-app-version="0.1.0">
+      <header class="app-header">
+        <div class="app-header__inner">
+          <div class="toolbar-start">
+            <button
+              class="menu-button icon-button"
+              id="menu-button"
+              type="button"
+              aria-label="Buka menu pengaturan"
+              aria-expanded="false"
+              aria-controls="app-menu"
+            >
+              <span class="menu-button__bars" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            </button>
+
+            <a
+              class="app-brand"
+              href="./"
+              aria-label="3D Kakulator"
+            >
+              <span class="app-brand__mark" aria-hidden="true">3D</span>
+              <span class="app-brand__text">
+                <span class="app-brand__title">Kakulator</span>
+                <span class="app-brand__subtitle">
+                  Interactive scientific workspace
+                </span>
+              </span>
+            </a>
+          </div>
+
+          <div class="app-header__actions">
+            <span class="badge badge--status" id="app-status">
+              <span class="status-dot" aria-hidden="true"></span>
+              Ready
+            </span>
+
+            <button
+              class="btn btn--ghost btn--icon"
+              id="scene-toggle-button"
+              type="button"
+              title="Aktif/nonaktif efek 3D"
+              aria-label="Aktif/nonaktif efek 3D"
+              aria-pressed="true"
+            >
+              3D
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav
+        class="popover menu"
+        id="app-menu"
+        aria-label="Pengaturan aplikasi"
+        hidden
+      >
+        <div class="popover__header">
+          <strong>Pengaturan</strong>
+          <small>Sesuaikan tampilan aplikasi.</small>
+        </div>
+
+        <div class="popover__body">
+          <div class="setting-row">
+            <div class="setting-row__content">
+              <div class="setting-row__title">FPS Counter</div>
+              <div class="setting-row__description">
+                Tampilkan performa rendering secara realtime.
+              </div>
+            </div>
+
+            <span class="switch">
+              <input
+                class="switch__input"
+                id="fps-toggle"
+                type="checkbox"
+                role="switch"
+                checked
+              >
+              <span class="switch__track" aria-hidden="true"></span>
+            </span>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-row__content">
+              <div class="setting-row__title">Efek 3D</div>
+              <div class="setting-row__description">
+                Aktifkan animasi dan interaksi scene 3D.
+              </div>
+            </div>
+
+            <span class="switch">
+              <input
+                class="switch__input"
+                id="scene-toggle"
+                type="checkbox"
+                role="switch"
+                checked
+              >
+              <span class="switch__track" aria-hidden="true"></span>
+            </span>
+          </div>
+        </div>
+      </nav>
+
+      <main class="app-main workspace workspace--calculator-first">
+        <section
+          class="workspace__main"
+          aria-label="Kalkulator"
+        >
+          <div class="calculator panel panel--fill">
+            <div class="panel__header">
+              <div>
+                <span class="panel__eyebrow">CALCULATOR</span>
+                <h1 class="panel__title">3D Kakulator</h1>
+              </div>
+
+              <span class="badge">v0.1.0</span>
+            </div>
+
+            <section
+              class="calculator-display"
+              aria-label="Layar kalkulator"
+            >
+              <div
+                class="calculator-display__expression"
+                id="calculator-expression"
+              >Ready</div>
+
+              <output
+                class="calculator-display__result calculator-display__value"
+                id="calculator-result"
+                aria-label="Hasil"
+                aria-live="polite"
+              >0</output>
+
+              <div class="calculator-display__status">
+                <span class="calculator-display__mode">DEG</span>
+                <span id="calculator-message" aria-live="polite"></span>
+              </div>
+            </section>
+
+            <div
+              class="calculator-keypad calculator-keypad--scientific"
+              id="calculator-keypad"
+              role="group"
+              aria-label="Tombol kalkulator"
+            >
+              <button class="calc-key calc-key--utility" type="button" data-value="(">(</button>
+              <button class="calc-key calc-key--utility" type="button" data-value=")">)</button>
+              <button class="calc-key calc-key--utility" type="button" data-action="percent">%</button>
+              <button class="calc-key calc-key--danger" type="button" data-action="clear">AC</button>
+              <button class="calc-key calc-key--danger" type="button" data-action="delete">DEL</button>
+
+              <button class="calc-key calc-key--utility" type="button">sin</button>
+              <button class="calc-key calc-key--utility" type="button">cos</button>
+              <button class="calc-key calc-key--utility" type="button">tan</button>
+              <button class="calc-key calc-key--utility" type="button">log</button>
+              <button class="calc-key calc-key--utility" type="button">ln</button>
+
+              <button class="calc-key calc-key--utility" type="button">√</button>
+              <button class="calc-key calc-key--utility" type="button">x²</button>
+              <button class="calc-key calc-key--utility" type="button">xʸ</button>
+              <button class="calc-key calc-key--utility" type="button" data-value="*">×</button>
+              <button class="calc-key calc-key--utility" type="button" data-value="/">÷</button>
+
+              <button class="calc-key" type="button" data-value="7">7</button>
+              <button class="calc-key" type="button" data-value="8">8</button>
+              <button class="calc-key" type="button" data-value="9">9</button>
+              <button class="calc-key calc-key--utility" type="button" data-value="-">−</button>
+              <button class="calc-key calc-key--operator" type="button" data-value="+">+</button>
+
+              <button class="calc-key" type="button" data-value="4">4</button>
+              <button class="calc-key" type="button" data-value="5">5</button>
+              <button class="calc-key" type="button" data-value="6">6</button>
+              <button class="calc-key calc-key--operator" type="button" data-value="*">×</button>
+              <button class="calc-key calc-key--operator" type="button" data-value="/">÷</button>
+
+              <button class="calc-key" type="button" data-value="1">1</button>
+              <button class="calc-key" type="button" data-value="2">2</button>
+              <button class="calc-key" type="button" data-value="3">3</button>
+              <button class="calc-key calc-key--operator" type="button" data-value="-">−</button>
+              <button class="calc-key calc-key--operator" type="button" data-value="+">+</button>
+
+              <button class="calc-key calc-key--utility" type="button" data-action="sign">±</button>
+              <button class="calc-key" type="button" data-value="0">0</button>
+              <button class="calc-key" type="button" data-value=".">.</button>
+              <button class="calc-key calc-key--utility" type="button" data-action="clear">C</button>
+              <button class="calc-key calc-key--equals" type="button" data-action="equals">=</button>
+            </div>
+
+            <section
+              class="calculator-history"
+              aria-label="Riwayat perhitungan"
+            >
+              <div class="calculator-history__header">
+                <h2 class="calculator-history__title">History</h2>
+
+                <button
+                  class="btn btn--ghost btn--sm"
+                  id="history-clear"
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <div
+                class="history-list"
+                id="history-list"
+                aria-live="polite"
+              >
+                <div class="empty-state">
+                  <span>Belum ada perhitungan.</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <aside
+          class="workspace__side panel panel--fill"
+          aria-label="Ruangan 3D"
+        >
+          <section class="viewport three-surface">
+            <div
+              class="viewport__canvas"
+              id="three-container"
+              aria-hidden="true"
+            ></div>
+
+            <div class="viewport-overlay viewport-overlay--top">
+              <div class="viewport-hud__group">
+                <div class="viewport-hud">
+                  <span>3D ROOM</span>
+                  <span>THREE.JS R186</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="viewport-overlay viewport-overlay--bottom">
+              <span
+                class="fps-counter"
+                id="fps-counter"
+                aria-live="off"
+              >FPS: --</span>
+            </div>
+          </section>
+        </aside>
+      </main>
+
+      <footer class="app-footer">
+        <span>3D Kakulator</span>
+        <span aria-hidden="true">•</span>
+        <span>Powered by Three.js</span>
+      </footer>
+    </div>
+  </div>
 
   <script type="module" src="./js/main.js"></script>
 </body>
