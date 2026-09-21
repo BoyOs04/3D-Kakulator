@@ -27,6 +27,7 @@ export class ThreeSceneController {
     fpsElement = null,
     state,
     onCalculatorKey,
+    runtimeProfile = null,
   }) {
     if (!container) {
       throw new Error("Container Three.js tidak ditemukan.");
@@ -44,6 +45,7 @@ export class ThreeSceneController {
     this.fpsElement = fpsElement;
     this.state = state;
     this.onCalculatorKey = onCalculatorKey;
+    this.runtimeProfile = runtimeProfile ?? {};
 
     this.scene = null;
     this.camera = null;
@@ -51,13 +53,17 @@ export class ThreeSceneController {
     this.controls = null;
     this.calculator3D = null;
     this.displayTexture = null;
+    this.particles = null;
     this.animationFrame = 0;
     this.resizeObserver = null;
     this.resizeHandler = null;
     this.visibilityHandler = null;
     this.initialized = false;
     this.running = true;
-    this.reducedMotion = false;
+    this.autoPauseWhenHidden =
+      this.runtimeProfile.autoPauseWhenHidden ?? true;
+    this.reducedMotion =
+      Boolean(this.runtimeProfile.reducedMotion);
 
     this.pointer = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
@@ -103,19 +109,25 @@ export class ThreeSceneController {
       powerPreference: "high-performance",
     });
 
+    const defaultPixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      isCoarsePointer ? 1.5 : 2,
+    );
+
     this.renderer.setPixelRatio(
-      Math.min(
-        window.devicePixelRatio || 1,
-        isCoarsePointer ? 1.5 : 2,
-      ),
+      Number.isFinite(this.runtimeProfile.pixelRatio)
+        ? this.runtimeProfile.pixelRatio
+        : defaultPixelRatio,
     );
 
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
 
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled =
+      this.runtimeProfile.shadows !== false;
+    this.renderer.shadowMap.type =
+      THREE.PCFSoftShadowMap;
 
     this.renderer.domElement.setAttribute("aria-hidden", "true");
     this.renderer.domElement.className = "three-canvas";
@@ -148,15 +160,11 @@ export class ThreeSceneController {
     this.calculator3D = create3DCalculator(this.scene);
     this.displayTexture = this.calculator3D.displayTexture;
 
-    const reducedMotionQuery = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
+    this.particles = createParticles(
+      this.runtimeProfile.particles,
     );
 
-    this.reducedMotion = reducedMotionQuery.matches;
-
-    if (this.reducedMotion) {
-      this.state.sceneEnabled = false;
-    }
+    this.scene.add(this.particles);
   }
 
   createControls() {
@@ -166,8 +174,12 @@ export class ThreeSceneController {
     );
 
     this.controls.target.set(0, 2.35, 0);
-    this.controls.enableDamping = !this.reducedMotion;
+    this.controls.enableDamping =
+      this.runtimeProfile.cameraDamping !== false &&
+      !this.reducedMotion;
     this.controls.dampingFactor = 0.065;
+    this.controls.enableZoom =
+      this.runtimeProfile.cameraZoom !== false;
     this.controls.minDistance = 8;
     this.controls.maxDistance = 19;
     this.controls.minPolarAngle = THREE.MathUtils.degToRad(28);
@@ -207,7 +219,13 @@ export class ThreeSceneController {
     }
 
     this.visibilityHandler = () => {
-      this.running = document.visibilityState !== "hidden";
+      if (!this.autoPauseWhenHidden) {
+        this.running = true;
+        return;
+      }
+
+      this.running =
+        document.visibilityState !== "hidden";
 
       if (!this.running) {
         this.previousTime = performance.now();
@@ -352,15 +370,17 @@ export class ThreeSceneController {
         return;
       }
 
+      if (!this.state.sceneEnabled) {
+        return;
+      }
+
       this.controls?.update();
 
-      if (this.state.sceneEnabled) {
-        animate3DCalculator(
-          this.calculator3D,
-          delta,
-          this.reducedMotion,
-        );
-      }
+      animate3DCalculator(
+        this.calculator3D,
+        delta,
+        this.reducedMotion,
+      );
 
       update3DKeyStates(this.calculator3D, delta);
 
@@ -390,6 +410,68 @@ export class ThreeSceneController {
     requestAnimationFrame(animate);
   }
 
+  /**
+   * Apply a resolved SettingsManager runtime profile.
+   *
+   * This controller consumes resolved runtime values and does not know
+   * how settings are persisted.
+   */
+  applySettings(profile = {}) {
+    this.runtimeProfile = {
+      ...this.runtimeProfile,
+      ...profile,
+    };
+
+    this.autoPauseWhenHidden =
+      this.runtimeProfile.autoPauseWhenHidden !== false;
+
+    this.reducedMotion =
+      Boolean(this.runtimeProfile.reducedMotion);
+
+    if (this.renderer) {
+      if (Number.isFinite(this.runtimeProfile.pixelRatio)) {
+        this.renderer.setPixelRatio(
+          this.runtimeProfile.pixelRatio,
+        );
+      }
+
+      this.setShadowQuality(
+        this.runtimeProfile.shadows !== false,
+        this.runtimeProfile.quality,
+      );
+
+      this.resize();
+    }
+
+    if (this.controls) {
+      this.controls.enableDamping =
+        this.runtimeProfile.cameraDamping !== false &&
+        !this.reducedMotion;
+
+      this.controls.enableZoom =
+        this.runtimeProfile.cameraZoom !== false;
+
+      this.controls.enabled =
+        this.state.sceneEnabled;
+    }
+
+    this.setParticleCount(
+      this.runtimeProfile.particles,
+    );
+
+    if (this.renderer?.domElement) {
+      this.renderer.domElement.style.opacity =
+        this.state.sceneEnabled ? "1" : "0";
+    }
+
+    return this;
+  }
+
+  /**
+   * Enable or disable the visible 3D layer.
+   *
+   * When disabled, the render loop skips the scene entirely.
+   */
   setEnabled(enabled) {
     this.state.sceneEnabled = Boolean(enabled);
 
@@ -399,7 +481,106 @@ export class ThreeSceneController {
     }
 
     if (this.controls) {
-      this.controls.enabled = this.state.sceneEnabled;
+      this.controls.enabled =
+        this.state.sceneEnabled;
+    }
+
+    if (this.state.sceneEnabled) {
+      this.renderOnce();
+    }
+  }
+
+  renderOnce() {
+    if (
+      !this.renderer ||
+      !this.scene ||
+      !this.camera ||
+      !this.state.sceneEnabled
+    ) {
+      return false;
+    }
+
+    this.controls?.update();
+
+    this.renderer.render(
+      this.scene,
+      this.camera,
+    );
+
+    return true;
+  }
+
+  setShadowQuality(enabled, quality = "medium") {
+    if (!this.renderer) {
+      return;
+    }
+
+    const shadowsEnabled = Boolean(enabled);
+
+    this.renderer.shadowMap.enabled =
+      shadowsEnabled;
+
+    const shadowMapSize =
+      shadowsEnabled && quality === "high"
+        ? 1024
+        : shadowsEnabled
+          ? 512
+          : 0;
+
+    this.scene?.traverse((object) => {
+      if (
+        !object.isLight ||
+        typeof object.castShadow !== "boolean"
+      ) {
+        return;
+      }
+
+      object.castShadow = shadowsEnabled;
+
+      if (shadowsEnabled && shadowMapSize > 0) {
+        object.shadow.mapSize.set(
+          shadowMapSize,
+          shadowMapSize,
+        );
+
+        if (object.shadow.map) {
+          object.shadow.map.dispose();
+          object.shadow.map = null;
+        }
+      }
+    });
+
+    this.renderOnce();
+  }
+
+  setParticleCount(value) {
+    const count = normalizeParticleCount(
+      value,
+      90,
+    );
+
+    if (!this.scene) {
+      return;
+    }
+
+    const currentCount =
+      this.particles?.geometry?.getAttribute(
+        "position",
+      )?.count ?? -1;
+
+    if (currentCount === count) {
+      return;
+    }
+
+    if (this.particles) {
+      this.scene.remove(this.particles);
+      disposeObject3DResources(this.particles);
+      this.particles = null;
+    }
+
+    if (count > 0) {
+      this.particles = createParticles(count);
+      this.scene.add(this.particles);
     }
   }
 
@@ -503,6 +684,12 @@ export class ThreeSceneController {
     this.controls = null;
     this.calculator3D = null;
     this.displayTexture = null;
+
+    if (this.particles) {
+      disposeObject3DResources(this.particles);
+      this.particles = null;
+    }
+
     this.initialized = false;
   }
 }
@@ -1352,11 +1539,17 @@ function disposeScene(scene) {
   });
 }
 
-function createParticles() {
-  const count = 90;
-  const positions = new Float32Array(count * 3);
+function createParticles(count = 90) {
+  const normalizedCount = normalizeParticleCount(
+    count,
+    90,
+  );
 
-  for (let i = 0; i < count; i += 1) {
+  const positions = new Float32Array(
+    normalizedCount * 3,
+  );
+
+  for (let i = 0; i < normalizedCount; i += 1) {
     positions[i * 3] = THREE.MathUtils.randFloatSpread(15);
     positions[i * 3 + 1] = THREE.MathUtils.randFloat(2.7, 8.2);
     positions[i * 3 + 2] = THREE.MathUtils.randFloat(-6.5, 6);
@@ -1380,3 +1573,47 @@ function createParticles() {
   return new THREE.Points(geometry, material);
 }
 
+
+
+function normalizeParticleCount(value, fallback = 90) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return Math.max(0, Math.trunc(Number(fallback) || 0));
+  }
+
+  return Math.min(
+    500,
+    Math.max(0, Math.trunc(numeric)),
+  );
+}
+
+function disposeObject3DResources(object) {
+  if (!object) {
+    return;
+  }
+
+  if (object.children) {
+    for (const child of [...object.children]) {
+      disposeObject3DResources(child);
+    }
+  }
+
+  if (object.geometry) {
+    object.geometry.dispose();
+  }
+
+  if (object.material) {
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+
+    for (const material of materials) {
+      if (material.map) {
+        material.map.dispose();
+      }
+
+      material.dispose();
+    }
+  }
+}
