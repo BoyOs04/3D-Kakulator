@@ -67,7 +67,9 @@ export class CalculatorEngine {
       numericResult: this.state.numericResult,
       justEvaluated: this.state.justEvaluated,
       error: this.state.error,
-      history: this.state.history.map((item) => ({ ...item })),
+      history: Array.isArray(this.state.history)
+        ? this.state.history.map((item) => ({ ...item }))
+        : [],
     };
   }
 
