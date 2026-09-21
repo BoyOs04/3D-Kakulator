@@ -1,0 +1,862 @@
+/*
+ * 3D Kakulator — Animations
+ * Purpose:
+ * - GPU-friendly UI motion
+ * - Entrance / exit transitions
+ * - Button and calculator-key feedback
+ * - Menu, dialog, toast and loading motion
+ * - Subtle ambient effects for the 3D workspace
+ * - Reduced-motion and forced-colors safe fallbacks
+ *
+ * Motion is intentionally based on transform and opacity whenever possible.
+ * Do not place business logic or application state in this stylesheet.
+ */
+
+/* =========================================================
+   1. MOTION TOKENS
+   ========================================================= */
+
+:root {
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 140ms;
+  --motion-duration-normal: 220ms;
+  --motion-duration-slow: 420ms;
+  --motion-duration-page: 620ms;
+}
+
+/* =========================================================
+   2. KEYFRAMES
+   ========================================================= */
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes app-pop-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0.4rem, 0) scale(0.94);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -0.05rem, 0) scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes app-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-1rem, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(1rem, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes app-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.52;
+  }
+}
+
+@keyframes app-soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(138, 180, 255, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 0.35rem rgba(138, 180, 255, 0.08);
+  }
+}
+
+@keyframes app-status-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes app-glow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes app-skeleton {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes app-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(1rem, 0.5rem, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes app-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.75rem, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes app-menu-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -0.5rem, 0) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* =========================================================
+   3. APP ENTRANCE
+   ========================================================= */
+
+/*
+ * main.js sets data-app-ready only after the shell is built.
+ * This prevents a flash of partially initialized content.
+ */
+html[data-app-ready="true"] .app {
+  animation:
+    app-fade-in var(--motion-duration-page) var(--motion-ease-out) both;
+}
+
+html[data-app-ready="true"] .app-header {
+  animation:
+    app-rise-in 500ms var(--motion-ease-out) 40ms both;
+}
+
+html[data-app-ready="true"] .workspace__main {
+  animation:
+    app-slide-in-left 560ms var(--motion-ease-out) 100ms both;
+}
+
+html[data-app-ready="true"] .workspace__side {
+  animation:
+    app-slide-in-right 560ms var(--motion-ease-out) 140ms both;
+}
+
+html[data-app-ready="true"] .app-footer {
+  animation:
+    app-fade-in 500ms var(--motion-ease-out) 220ms both;
+}
+
+/* =========================================================
+   4. BRAND / HEADER INTERACTION
+   ========================================================= */
+
+.brand,
+.app-brand {
+  transition:
+    opacity var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.brand:hover,
+.app-brand:hover {
+  transform: translate3d(0, -1px, 0);
+}
+
+.brand:active,
+.app-brand:active {
+  transform: translate3d(0, 0, 0) scale(0.985);
+}
+
+.brand__mark,
+.app-brand__mark {
+  transition:
+    transform var(--motion-duration-normal) var(--motion-ease-out),
+    border-color var(--motion-duration-normal) var(--motion-ease-out),
+    background-color var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.brand:hover .brand__mark,
+.app-brand:hover .app-brand__mark {
+  transform: rotate(-4deg) scale(1.035);
+  border-color: var(--color-primary);
+  background: var(--color-surface-3);
+}
+
+/* =========================================================
+   5. BUTTON MOTION
+   ========================================================= */
+
+.btn,
+.icon-button,
+.menu-button {
+  will-change: transform;
+}
+
+.btn:hover,
+.icon-button:hover {
+  transform: translate3d(0, -1px, 0);
+}
+
+.btn:active,
+.icon-button:active {
+  transform: translate3d(0, 1px, 0) scale(0.985);
+}
+
+.btn--primary:hover,
+.calc-key--equals:hover {
+  animation:
+    app-soft-pulse 900ms var(--motion-ease-in-out) infinite;
+}
+
+.menu-button {
+  transition:
+    background-color var(--motion-duration-normal) var(--motion-ease-out),
+    border-color var(--motion-duration-normal) var(--motion-ease-out),
+    color var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.menu-button:hover {
+  transform: scale(1.035);
+}
+
+.menu-button:active {
+  transform: scale(0.96);
+}
+
+.menu-button[aria-expanded="true"] {
+  transform: rotate(0.01deg);
+}
+
+/* =========================================================
+   6. CALCULATOR DISPLAY
+   ========================================================= */
+
+.calculator-display {
+  transition:
+    border-color var(--motion-duration-normal) var(--motion-ease-out),
+    box-shadow var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.calculator-display:focus-within,
+.calculator-display.is-active {
+  border-color: rgba(138, 180, 255, 0.34);
+  box-shadow:
+    0 0 0 1px rgba(138, 180, 255, 0.08),
+    0 0 2rem rgba(138, 180, 255, 0.05),
+    var(--shadow-sm);
+}
+
+.calculator-display__result {
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.calculator-display__result.is-changing {
+  animation:
+    app-pop-in 180ms var(--motion-ease-out) both;
+}
+
+/* =========================================================
+   7. CALCULATOR KEY FEEDBACK
+   ========================================================= */
+
+.calc-key {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.calc-key::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.12),
+      transparent 62%
+    );
+  content: "";
+  opacity: 0;
+  transform: scale(0.72);
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-out),
+    transform var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.calc-key:hover::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.calc-key:active {
+  transform: translate3d(0, 2px, 0) scale(0.975);
+}
+
+.calc-key.is-pressed {
+  animation:
+    app-pop-in 150ms var(--motion-ease-out) both;
+}
+
+.calc-key.is-selected {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 0 0 1px rgba(138, 180, 255, 0.15),
+    0 0 1.5rem rgba(138, 180, 255, 0.08);
+}
+
+/* =========================================================
+   8. HISTORY
+   ========================================================= */
+
+.history-item {
+  transition:
+    background-color var(--motion-duration-normal) var(--motion-ease-out),
+    border-color var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.history-item:hover {
+  background: rgba(138, 180, 255, 0.035);
+  transform: translate3d(0.125rem, 0, 0);
+}
+
+.history-item:active {
+  transform: translate3d(0, 0, 0) scale(0.995);
+}
+
+/*
+ * New history entries can use data-index="0", "1", etc.
+ * Only a few stagger steps are defined to keep selector cost low.
+ */
+.history-item[data-index="0"] {
+  animation:
+    app-rise-in 240ms var(--motion-ease-out) both;
+}
+
+.history-item[data-index="1"] {
+  animation:
+    app-rise-in 240ms var(--motion-ease-out) 35ms both;
+}
+
+.history-item[data-index="2"] {
+  animation:
+    app-rise-in 240ms var(--motion-ease-out) 70ms both;
+}
+
+.history-item[data-index="3"] {
+  animation:
+    app-rise-in 240ms var(--motion-ease-out) 105ms both;
+}
+
+/* =========================================================
+   9. MENU / POPOVER
+   ========================================================= */
+
+.popover,
+.menu {
+  transform-origin: top right;
+}
+
+.menu:not([hidden]) {
+  animation:
+    app-menu-in 180ms var(--motion-ease-out) both;
+}
+
+.menu__item {
+  transition:
+    background-color var(--motion-duration-normal) var(--motion-ease-out),
+    color var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.menu__item:hover {
+  transform: translate3d(0.125rem, 0, 0);
+}
+
+.settings-row,
+.setting-row {
+  transition:
+    background-color var(--motion-duration-normal) var(--motion-ease-out),
+    border-color var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.settings-row:hover,
+.setting-row:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* =========================================================
+   10. SWITCH / RANGE INTERACTION
+   ========================================================= */
+
+.switch {
+  will-change: transform;
+}
+
+.settings-row:hover .switch,
+.setting-row:hover .switch {
+  transform: scale(1.025);
+}
+
+.switch__track::before {
+  will-change: transform;
+}
+
+.range-control__input {
+  transition:
+    opacity var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.range-control__input:hover {
+  opacity: 0.92;
+}
+
+/* =========================================================
+   11. BADGE / STATUS
+   ========================================================= */
+
+.status-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 0 rgba(111, 214, 164, 0.16);
+  animation:
+    app-status-pulse 1.8s var(--motion-ease-in-out) infinite;
+}
+
+/*
+ * The base component currently renders a dot using ::before.
+ * Keep a subtle pulse available for either implementation.
+ */
+.badge--status::before {
+  animation:
+    app-status-pulse 1.8s var(--motion-ease-in-out) infinite;
+}
+
+/* =========================================================
+   12. FPS COUNTER / HUD
+   ========================================================= */
+
+.fps-counter {
+  transition:
+    border-color var(--motion-duration-normal) var(--motion-ease-out),
+    background-color var(--motion-duration-normal) var(--motion-ease-out),
+    transform var(--motion-duration-normal) var(--motion-ease-out);
+}
+
+.fps-counter:hover {
+  border-color: rgba(138, 180, 255, 0.3);
+  transform: translate3d(0, -1px, 0);
+}
+
+.viewport-hud,
+.viewport-overlay {
+  transition:
+    opacity var(--motion-duration-slow) var(--motion-ease-out),
+    transform var(--motion-duration-slow) var(--motion-ease-out);
+}
+
+.viewport:hover .viewport-hud {
+  transform: translate3d(0, -1px, 0);
+}
+
+.viewport:hover .fps-counter {
+  transform: translate3d(0, -2px, 0);
+}
+
+/* =========================================================
+   13. 3D VIEWPORT
+   ========================================================= */
+
+.three-canvas {
+  opacity: 0;
+  animation:
+    app-fade-in 700ms var(--motion-ease-out) 180ms both;
+}
+
+.viewport {
+  transition:
+    border-color var(--motion-duration-slow) var(--motion-ease-out),
+    box-shadow var(--motion-duration-slow) var(--motion-ease-out),
+    opacity var(--motion-duration-slow) var(--motion-ease-out);
+}
+
+.viewport:hover {
+  border-color: rgba(138, 180, 255, 0.17);
+}
+
+/*
+ * Visual state used while JavaScript disables the 3D surface.
+ * The transform is deliberately tiny to avoid distracting movement.
+ */
+.viewport.is-disabled {
+  filter: saturate(0.72);
+}
+
+/* =========================================================
+   14. DIALOG
+   ========================================================= */
+
+.dialog[open] {
+  animation:
+    app-dialog-in 220ms var(--motion-ease-out) both;
+}
+
+.dialog::backdrop {
+  animation:
+    app-fade-in 180ms var(--motion-ease-out) both;
+}
+
+/* =========================================================
+   15. TOAST
+   ========================================================= */
+
+.toast {
+  animation:
+    app-toast-in 280ms var(--motion-ease-out) both;
+}
+
+.toast.is-exiting {
+  opacity: 0;
+  transform: translate3d(1rem, 0, 0);
+  transition:
+    opacity 180ms var(--motion-ease-in),
+    transform 180ms var(--motion-ease-in);
+}
+
+/* =========================================================
+   16. LOADING / SKELETON
+   ========================================================= */
+
+.loading-indicator {
+  animation:
+    app-spin 700ms linear infinite;
+  will-change: transform;
+}
+
+.skeleton {
+  animation:
+    app-skeleton 1.5s linear infinite;
+}
+
+.is-loading .loading-indicator,
+.is-busy .loading-indicator {
+  animation:
+    app-spin 700ms linear infinite;
+}
+
+/* =========================================================
+   17. STATE / UTILITY ANIMATION CLASSES
+   ========================================================= */
+
+.animate-fade-in {
+  animation:
+    app-fade-in var(--motion-duration-slow) var(--motion-ease-out) both;
+}
+
+.animate-rise-in {
+  animation:
+    app-rise-in var(--motion-duration-slow) var(--motion-ease-out) both;
+}
+
+.animate-scale-in {
+  animation:
+    app-scale-in var(--motion-duration-slow) var(--motion-ease-out) both;
+}
+
+.animate-pop-in {
+  animation:
+    app-pop-in 240ms var(--motion-ease-out) both;
+}
+
+.animate-slide-in-left {
+  animation:
+    app-slide-in-left var(--motion-duration-slow) var(--motion-ease-out) both;
+}
+
+.animate-slide-in-right {
+  animation:
+    app-slide-in-right var(--motion-duration-slow) var(--motion-ease-out) both;
+}
+
+.animate-pulse {
+  animation:
+    app-pulse 1.8s var(--motion-ease-in-out) infinite;
+}
+
+.animate-glow {
+  animation:
+    app-glow 2.4s var(--motion-ease-in-out) infinite;
+}
+
+.animate-spin {
+  animation:
+    app-spin 700ms linear infinite;
+}
+
+.animate-once {
+  animation-iteration-count: 1 !important;
+}
+
+/* =========================================================
+   18. STAGGER HELPERS
+   ========================================================= */
+
+[data-stagger-item] {
+  animation:
+    app-rise-in 420ms var(--motion-ease-out) both;
+}
+
+[data-stagger-item="1"] {
+  animation-delay: 40ms;
+}
+
+[data-stagger-item="2"] {
+  animation-delay: 80ms;
+}
+
+[data-stagger-item="3"] {
+  animation-delay: 120ms;
+}
+
+[data-stagger-item="4"] {
+  animation-delay: 160ms;
+}
+
+[data-stagger-item="5"] {
+  animation-delay: 200ms;
+}
+
+[data-stagger-item="6"] {
+  animation-delay: 240ms;
+}
+
+[data-stagger-item="7"] {
+  animation-delay: 280ms;
+}
+
+[data-stagger-item="8"] {
+  animation-delay: 320ms;
+}
+
+/* =========================================================
+   19. PERFORMANCE GUARDRAILS
+   ========================================================= */
+
+/*
+ * Use will-change only on elements that actually animate.
+ * Avoid applying it globally because it may increase memory use.
+ */
+.calc-key:hover,
+.btn:hover,
+.icon-button:hover,
+.menu-button:hover,
+.history-item:hover {
+  will-change: transform;
+}
+
+.calc-key:not(:hover),
+.btn:not(:hover),
+.icon-button:not(:hover),
+.menu-button:not(:hover),
+.history-item:not(:hover) {
+  will-change: auto;
+}
+
+/* =========================================================
+   20. REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-ready="true"] .app,
+  html[data-app-ready="true"] .app-header,
+  html[data-app-ready="true"] .workspace__main,
+  html[data-app-ready="true"] .workspace__side,
+  html[data-app-ready="true"] .app-footer,
+  .three-canvas,
+  .menu:not([hidden]),
+  .dialog[open],
+  .dialog::backdrop,
+  .toast,
+  .loading-indicator,
+  .skeleton,
+  [data-stagger-item],
+  .animate-fade-in,
+  .animate-rise-in,
+  .animate-scale-in,
+  .animate-pop-in,
+  .animate-slide-in-left,
+  .animate-slide-in-right,
+  .animate-pulse,
+  .animate-glow,
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .brand,
+  .app-brand,
+  .btn,
+  .icon-button,
+  .menu-button,
+  .calc-key,
+  .history-item,
+  .fps-counter,
+  .viewport,
+  .settings-row,
+  .setting-row,
+  .calculator-display {
+    transition-duration: 0.01ms !important;
+  }
+
+  .brand:hover,
+  .app-brand:hover,
+  .btn:hover,
+  .icon-button:hover,
+  .menu-button:hover,
+  .calc-key:hover,
+  .history-item:hover,
+  .fps-counter:hover,
+  .viewport:hover .viewport-hud,
+  .viewport:hover .fps-counter {
+    transform: none !important;
+  }
+
+  .three-canvas {
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   21. FORCED COLORS
+   ========================================================= */
+
+@media (forced-colors: active) {
+  .status-dot,
+  .badge--status::before {
+    background: ButtonText;
+    box-shadow: none;
+  }
+
+  .calc-key::after {
+    display: none;
+  }
+
+  .skeleton {
+    animation: none;
+    background: Canvas;
+  }
+}
+
+/* =========================================================
+   22. PRINT
+   ========================================================= */
+
+@media print {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
