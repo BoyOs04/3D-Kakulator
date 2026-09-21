@@ -1,5 +1,8 @@
 import { CalculatorEngine } from "./calculator.js";
-import { ThreeSceneController } from "./three-scene.js";
+import {
+  ThreeSceneController,
+  THREE_REVISION,
+} from "./three-scene.js";
 
 /**
  * 3D Kakulator
@@ -261,7 +264,7 @@ function buildShell() {
       createElement("div", { className: "viewport-overlay viewport-overlay--top" }, [
         createElement("div", { className: "viewport-hud" }, [
           createElement("span", { text: "3D ENGINE" }),
-          createElement("span", { text: `THREE.JS ${THREE.REVISION}` }),
+          createElement("span", { text: `THREE.JS ${THREE_REVISION}` }),
         ]),
       ]),
       createElement("div", { className: "viewport-overlay viewport-overlay--bottom" }, [
