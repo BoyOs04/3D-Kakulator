@@ -1,59 +1,21 @@
 import { CalculatorEngine } from "./calculator.js";
-import {
-  ThreeSceneController,
-  THREE_REVISION,
-} from "./three-scene.js";
+import { ThreeSceneController } from "./three-scene.js";
 
 /**
- * 3D Kakulator
- * Application bootstrap / entry point.
+ * 3D Kakulator — Application Bootstrap
+ *
+ * HTML owns the document structure.
+ * This module only connects application behavior to the existing DOM.
  *
  * Responsibilities:
- * - Load the modular CSS layers.
- * - Build the initial application shell.
- * - Provide a functional calculator while feature modules are still being added.
- * - Initialize a lightweight Three.js background scene.
- * - Expose a small application context for the upcoming modules.
- *
- * The heavier feature logic is intentionally kept out of this file so the
- * application can later delegate to calculator.js, three-scene.js, ui.js,
- * settings.js, animations.js and utils.js without rebuilding the shell.
+ * - Initialize the calculator engine.
+ * - Bind calculator controls and keyboard input.
+ * - Synchronize the HTML display and history.
+ * - Initialize and control the Three.js scene.
+ * - Manage lightweight global UI state such as the menu and settings.
  */
 
 const APP_VERSION = "0.1.0";
-const CSS_FILES = [
-  "./css/base.css",
-  "./css/layout.css",
-  "./css/components.css",
-  "./css/animations.css",
-];
-
-const CALCULATOR_KEYS = [
-  { label: "AC", action: "clear", type: "action" },
-  { label: "DEL", action: "delete", type: "action" },
-  { label: "%", action: "percent", type: "action" },
-  { label: "÷", value: "/", type: "operator" },
-
-  { label: "7", value: "7", type: "number" },
-  { label: "8", value: "8", type: "number" },
-  { label: "9", value: "9", type: "number" },
-  { label: "×", value: "*", type: "operator" },
-
-  { label: "4", value: "4", type: "number" },
-  { label: "5", value: "5", type: "number" },
-  { label: "6", value: "6", type: "number" },
-  { label: "−", value: "-", type: "operator" },
-
-  { label: "1", value: "1", type: "number" },
-  { label: "2", value: "2", type: "number" },
-  { label: "3", value: "3", type: "number" },
-  { label: "+", value: "+", type: "operator" },
-
-  { label: "±", action: "sign", type: "action" },
-  { label: "0", value: "0", type: "number" },
-  { label: ".", value: ".", type: "number" },
-  { label: "=", action: "equals", type: "equals" },
-];
 
 const state = {
   expression: "",
@@ -70,456 +32,265 @@ const calculator = new CalculatorEngine({
   maxHistory: 20,
 });
 
+const appContext = {
+  version: APP_VERSION,
+  state,
+  elements: {},
+  calculator,
+  threeScene: null,
+  motion: null,
+  destroy() {
+    this.threeScene?.destroy();
+    calculator.destroy();
+    this.elements.root?.replaceChildren();
+  },
+};
+
 calculator.subscribe((snapshot) => {
-  state.expression = snapshot.expression;
-  state.result = snapshot.result;
-  state.numericResult = snapshot.numericResult;
-  state.justEvaluated = snapshot.justEvaluated;
-  state.error = snapshot.error;
-  state.history = snapshot.history;
+  Object.assign(state, snapshot);
 
   updateDisplay();
   renderHistory();
 });
 
-const appContext = {
-  version: APP_VERSION,
-  state,
-  elements: {},
-  threeScene: null,
-  destroy() {
-    this.threeScene?.destroy();
-    calculator.destroy();
-    document.querySelector("#app")?.replaceChildren();
-  },
-};
-
-function loadStyles() {
-  const head = document.head;
-
-  for (const href of CSS_FILES) {
-    if (head.querySelector(`link[data-app-style="${href}"]`)) {
-      continue;
-    }
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    link.dataset.appStyle = href;
-    head.append(link);
-  }
-}
-
-function createElement(tag, options = {}, children = []) {
-  const element = document.createElement(tag);
-
-  if (options.className) {
-    element.className = options.className;
-  }
-
-  if (options.id) {
-    element.id = options.id;
-  }
-
-  if (options.text) {
-    element.textContent = options.text;
-  }
-
-  if (options.html) {
-    element.innerHTML = options.html;
-  }
-
-  if (options.attributes) {
-    for (const [name, value] of Object.entries(options.attributes)) {
-      if (value !== null && value !== undefined) {
-        element.setAttribute(name, String(value));
-      }
-    }
-  }
-
-  if (options.dataset) {
-    Object.assign(element.dataset, options.dataset);
-  }
-
-  if (options.listeners) {
-    for (const [event, handler] of Object.entries(options.listeners)) {
-      element.addEventListener(event, handler);
-    }
-  }
-
-  for (const child of children) {
-    if (child) {
-      element.append(child);
-    }
-  }
-
-  return element;
-}
-
-function buildShell() {
+function cacheElements() {
   const root = document.querySelector("#app");
 
   if (!root) {
     throw new Error("Container #app tidak ditemukan.");
   }
 
-  root.replaceChildren();
-  root.className = "app-shell";
-
-  const app = createElement("div", {
-    className: "app",
-    attributes: {
-      "data-app-version": APP_VERSION,
-    },
-  });
-
-  const header = createElement(
-    "header",
-    { className: "app-header" },
-    [
-      createElement("div", { className: "app-header__start" }, [
-        createElement("button", {
-          className: "menu-button",
-          attributes: {
-            type: "button",
-            "aria-label": "Buka menu",
-            "aria-expanded": "false",
-            "aria-controls": "app-menu",
-          },
-          html: `
-            <span class="menu-button__bars" aria-hidden="true">
-              <span></span><span></span><span></span>
-            </span>
-          `,
-          listeners: {
-            click: toggleMenu,
-          },
-        }),
-        createElement("a", {
-          className: "brand",
-          attributes: {
-            href: "#",
-            "aria-label": "3D Kakulator",
-          },
-        }, [
-          createElement("span", {
-            className: "brand__mark",
-            text: "3D",
-            attributes: { "aria-hidden": "true" },
-          }),
-          createElement("span", {
-            className: "brand__name",
-            text: "Kakulator",
-          }),
-        ]),
-      ]),
-      createElement("div", { className: "toolbar-end" }, [
-        createElement("span", {
-          className: "badge badge--status",
-          html: '<span class="status-dot" aria-hidden="true"></span> Ready',
-        }),
-        createElement("button", {
-          className: "btn btn--ghost btn--icon",
-          attributes: {
-            type: "button",
-            "aria-label": "Aktif/nonaktif efek 3D",
-            title: "Toggle efek 3D",
-            "aria-pressed": String(state.sceneEnabled),
-          },
-          html: "3D",
-          listeners: {
-            click: toggleScene,
-          },
-        }),
-      ]),
-    ],
-  );
-
-  const menu = createElement(
-    "nav",
-    {
-      className: "popover menu",
-      id: "app-menu",
-      attributes: {
-        hidden: "",
-      },
-    },
-    [
-      createElement("div", { className: "menu__title", text: "Pengaturan" }),
-      createMenuSwitch("FPS Counter", state.fpsEnabled, toggleFPS),
-      createMenuSwitch("Efek 3D", state.sceneEnabled, toggleScene),
-    ],
-  );
-
-  const viewport = createElement(
-    "section",
-    {
-      className: "viewport three-surface",
-      attributes: {
-        "aria-label": "Tampilan 3D",
-      },
-    },
-    [
-      createElement("div", { className: "viewport__canvas", id: "three-container" }),
-      createElement("div", { className: "viewport-overlay viewport-overlay--top" }, [
-        createElement("div", { className: "viewport-hud" }, [
-          createElement("span", { text: "3D ENGINE" }),
-          createElement("span", { text: `THREE.JS ${THREE_REVISION}` }),
-        ]),
-      ]),
-      createElement("div", { className: "viewport-overlay viewport-overlay--bottom" }, [
-        createElement("span", {
-          className: "fps-counter",
-          id: "fps-counter",
-          text: "FPS: --",
-          attributes: { "aria-live": "off" },
-        }),
-      ]),
-    ],
-  );
-
-  const display = createElement("section", {
-    className: "calculator-display",
-    attributes: {
-      "aria-label": "Layar kalkulator",
-    },
-  }, [
-    createElement("div", {
-      className: "calculator-display__expression",
-      id: "calculator-expression",
-      text: "",
-    }),
-    createElement("output", {
-      className: "calculator-display__result",
-      id: "calculator-result",
-      text: "0",
-      attributes: {
-        "aria-live": "polite",
-        "aria-label": "Hasil",
-      },
-    }),
-  ]);
-
-  const keypad = createElement("div", {
-    className: "calculator-keypad calculator-keypad--five-column",
-    attributes: {
-      role: "group",
-      "aria-label": "Tombol kalkulator",
-    },
-  });
-
-  for (const key of CALCULATOR_KEYS) {
-    keypad.append(createCalculatorKey(key));
-  }
-
-  const calculator = createElement(
-    "section",
-    {
-      className: "calculator panel panel--fill",
-      attributes: {
-        "aria-label": "Kalkulator",
-      },
-    },
-    [
-      createElement("div", { className: "panel__header" }, [
-        createElement("div", {}, [
-          createElement("span", { className: "panel__eyebrow", text: "CALCULATOR" }),
-          createElement("h1", { className: "panel__title", text: "3D Kakulator" }),
-        ]),
-        createElement("span", {
-          className: "badge",
-          text: `v${APP_VERSION}`,
-        }),
-      ]),
-      display,
-      keypad,
-      createElement("section", {
-        className: "calculator-history",
-        attributes: {
-          "aria-label": "Riwayat perhitungan",
-        },
-      }, [
-        createElement("div", { className: "calculator-history__header" }, [
-          createElement("h2", { className: "calculator-history__title", text: "History" }),
-          createElement("button", {
-            className: "btn btn--ghost btn--small",
-            text: "Clear",
-            attributes: { type: "button" },
-            listeners: { click: clearHistory },
-          }),
-        ]),
-        createElement("div", {
-          className: "history-list",
-          id: "history-list",
-        }),
-      ]),
-    ],
-  );
-
-  const workspace = createElement(
-    "main",
-    {
-      className: "app-main workspace workspace--calculator-first",
-      attributes: {
-        "aria-label": "Ruang kerja kalkulator",
-      },
-    },
-    [
-      createElement("div", { className: "workspace__main" }, [calculator]),
-      createElement("aside", {
-        className: "workspace__side panel panel--fill",
-        attributes: {
-          "aria-label": "3D Preview",
-        },
-      }, [
-        viewport,
-      ]),
-    ],
-  );
-
-  const footer = createElement("footer", {
-    className: "app-footer",
-    html: `
-      <span>3D Kakulator</span>
-      <span>•</span>
-      <span>Powered by Three.js</span>
-    `,
-  });
-
-  app.append(header, menu, workspace, footer);
-  root.append(app);
-
-  appContext.elements = {
+  const required = {
     root,
-    app,
-    header,
-    menu,
-    viewport,
-    calculator,
-    display,
-    expression: document.querySelector("#calculator-expression"),
-    result: document.querySelector("#calculator-result"),
-    keypad,
-    historyList: document.querySelector("#history-list"),
-    fps: document.querySelector("#fps-counter"),
-    menuButton: header.querySelector(".menu-button"),
-    sceneContainer: document.querySelector("#three-container"),
+    app: root.querySelector(".app"),
+    menuButton: root.querySelector("#menu-button"),
+    menu: root.querySelector("#app-menu"),
+    sceneToggleButton: root.querySelector("#scene-toggle-button"),
+    sceneToggle: root.querySelector("#scene-toggle"),
+    fpsToggle: root.querySelector("#fps-toggle"),
+    fps: root.querySelector("#fps-counter"),
+    sceneContainer: root.querySelector("#three-container"),
+    keypad: root.querySelector("#calculator-keypad"),
+    expression: root.querySelector("#calculator-expression"),
+    result: root.querySelector("#calculator-result"),
+    message: root.querySelector("#calculator-message"),
+    historyList: root.querySelector("#history-list"),
+    historyClear: root.querySelector("#history-clear"),
+    status: root.querySelector("#app-status"),
   };
 
-  renderHistory();
+  for (const [name, element] of Object.entries(required)) {
+    if (!element) {
+      throw new Error(`Elemen UI wajib "${name}" tidak ditemukan.`);
+    }
+  }
+
+  appContext.elements = required;
+
+  root.dataset.appReady = "false";
 }
 
-function createMenuSwitch(label, checked, handler) {
-  const inputId = `setting-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-
-  const input = createElement("input", {
-    attributes: {
-      type: "checkbox",
-      id: inputId,
-      role: "switch",
-      checked: checked ? "" : null,
-    },
-    listeners: {
-      change: handler,
-    },
-  });
-
-  return createElement("label", { className: "settings-row", attributes: { for: inputId } }, [
-    createElement("span", { className: "settings-row__label", text: label }),
-    createElement("span", { className: "switch" }, [input, createElement("span", {
-      className: "switch__track",
-      attributes: { "aria-hidden": "true" },
-    })]),
-  ]);
+function handleCalculatorInput(key) {
+  calculator.press(key);
 }
 
-function createCalculatorKey(key) {
-  const classes = ["calc-key"];
+function handleKeypadClick(event) {
+  const button = event.target.closest("button[data-action], button[data-value]");
 
-  if (key.type === "operator") classes.push("calc-key--operator");
-  if (key.type === "equals") classes.push("calc-key--equals");
-  if (key.type === "action") classes.push("calc-key--action");
-
-  return createElement("button", {
-    className: classes.join(" "),
-    text: key.label,
-    attributes: {
-      type: "button",
-      "aria-label": key.label === "×" ? "Kali" : undefined,
-      "data-action": key.action ?? "",
-      "data-value": key.value ?? "",
-    },
-    listeners: {
-      click: () => handleKey(key),
-    },
-  });
-}
-
-function handleKey(key) {
-  return calculator.press(key);
-}
-
-function calculate() {
-  return calculator.calculate();
-}
-
-function updateDisplay() {
-  if (!appContext.elements.expression || !appContext.elements.result) {
+  if (!button || !appContext.elements.keypad.contains(button)) {
     return;
   }
 
-  appContext.elements.expression.textContent = state.expression || "Ready";
-  appContext.elements.result.textContent = state.result;
-  appContext.elements.result.title = state.error || "";
+  const action = button.dataset.action;
+  const value = button.dataset.value;
+
+  handleCalculatorInput({
+    label: button.textContent.trim(),
+    action: action || undefined,
+    value: value || undefined,
+    type: action
+      ? "action"
+      : inferButtonType(value),
+  });
+
+  button.classList.remove("is-pressed");
+  void button.offsetWidth;
+  button.classList.add("is-pressed");
+
+  window.setTimeout(() => {
+    button.classList.remove("is-pressed");
+  }, 180);
+}
+
+function inferButtonType(value) {
+  if (!value) {
+    return "unknown";
+  }
+
+  if (/^[0-9.]$/.test(value)) {
+    return "number";
+  }
+
+  if (["+", "-", "*", "/"].includes(value)) {
+    return "operator";
+  }
+
+  return "unknown";
+}
+
+function handleKeyboard(event) {
+  if (
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    isTextEditingTarget(event.target)
+  ) {
+    return;
+  }
+
+  const supported = [
+    "Enter",
+    "=",
+    "Backspace",
+    "Escape",
+    "%",
+    ".",
+    "+",
+    "-",
+    "*",
+    "/",
+  ];
+
+  if (!/^[0-9]$/.test(event.key) && !supported.includes(event.key)) {
+    return;
+  }
+
+  if (["Enter", "=", "Backspace", "Escape"].includes(event.key)) {
+    event.preventDefault();
+  }
+
+  calculator.handleKeyboardKey(event.key);
+}
+
+function isTextEditingTarget(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(
+      "input:not([type='checkbox']):not([type='radio']), textarea, select, [contenteditable='true']",
+    ),
+  );
+}
+
+function updateDisplay() {
+  const {
+    expression,
+    result,
+    message,
+  } = appContext.elements;
+
+  if (!expression || !result) {
+    return;
+  }
+
+  expression.textContent = state.expression || "Ready";
+  result.textContent = state.result;
+  result.title = state.error || "";
+
+  if (message) {
+    message.textContent = state.error || "";
+  }
+
   appContext.threeScene?.updateDisplay(
     state.expression,
     state.result,
   );
+
+  updateStatus();
+}
+
+function updateStatus() {
+  const status = appContext.elements.status;
+
+  if (!status) {
+    return;
+  }
+
+  if (state.error) {
+    status.textContent = "Error";
+    status.classList.remove("badge--status");
+    status.classList.add("badge--danger");
+    return;
+  }
+
+  status.textContent = "Ready";
+  status.classList.remove("badge--danger");
+  status.classList.add("badge--status");
 }
 
 function renderHistory() {
   const list = appContext.elements.historyList;
 
-  if (!list) return;
+  if (!list) {
+    return;
+  }
 
   list.replaceChildren();
 
   if (!state.history.length) {
-    list.append(createElement("div", {
-      className: "empty-state",
-      html: "<span>Belum ada perhitungan.</span>",
-    }));
+    list.append(
+      createHistoryEmptyState(),
+    );
     return;
   }
 
-  for (const item of state.history) {
-    const entry = createElement("button", {
-      className: "history-item",
-      attributes: {
-        type: "button",
-        title: `Gunakan hasil ${item.result}`,
-      },
-      listeners: {
-        click: () => {
-          const index = state.history.findIndex((entry) => entry.id === item.id);
-          if (index >= 0) {
-            calculator.recallHistory(index);
-          }
-        },
-      },
-    }, [
-      createElement("span", {
-        className: "history-item__expression",
-        text: item.expression,
-      }),
-      createElement("strong", {
-        className: "history-item__result",
-        text: item.result,
-      }),
-    ]);
+  for (const [index, item] of state.history.entries()) {
+    const entry = document.createElement("button");
 
-    entry.dataset.index = String(state.history.indexOf(item));
+    entry.type = "button";
+    entry.className = "history-item";
+    entry.dataset.index = String(index);
+    entry.dataset.historyId = item.id;
+    entry.title = `Gunakan hasil ${item.result}`;
+
+    const expression = document.createElement("span");
+    expression.className = "history-item__expression";
+    expression.textContent = item.expression;
+
+    const result = document.createElement("strong");
+    result.className = "history-item__result";
+    result.textContent = item.result;
+
+    entry.append(expression, result);
     list.append(entry);
+  }
+}
+
+function createHistoryEmptyState() {
+  const empty = document.createElement("div");
+  empty.className = "empty-state";
+
+  const text = document.createElement("span");
+  text.textContent = "Belum ada perhitungan.";
+
+  empty.append(text);
+
+  return empty;
+}
+
+function handleHistoryClick(event) {
+  const item = event.target.closest("button[data-index]");
+
+  if (!item || !appContext.elements.historyList.contains(item)) {
+    return;
+  }
+
+  const index = Number(item.dataset.index);
+
+  if (Number.isInteger(index) && index >= 0) {
+    calculator.recallHistory(index);
   }
 }
 
@@ -527,145 +298,263 @@ function clearHistory() {
   calculator.clearHistory();
 }
 
-function toggleMenu() {
-  const { menu, menuButton } = appContext.elements;
+function toggleMenu(force) {
+  const {
+    menu,
+    menuButton,
+  } = appContext.elements;
 
-  if (!menu || !menuButton) return;
-
-  const willOpen = menu.hasAttribute("hidden");
-
-  if (willOpen) {
-    menu.removeAttribute("hidden");
-  } else {
-    menu.setAttribute("hidden", "");
+  if (!menu || !menuButton) {
+    return;
   }
 
-  menuButton.setAttribute("aria-expanded", String(willOpen));
+  const open = force ?? menu.hidden;
+  menu.hidden = !open;
+
+  menuButton.setAttribute(
+    "aria-expanded",
+    String(open),
+  );
 }
 
-function toggleScene(event) {
-  state.sceneEnabled =
-    event?.target?.checked ?? !state.sceneEnabled;
+function closeMenu() {
+  toggleMenu(false);
+}
 
-  appContext.threeScene?.setEnabled(state.sceneEnabled);
-  updateSceneVisibility();
+function setSceneEnabled(enabled) {
+  state.sceneEnabled = Boolean(enabled);
 
-  const button = appContext.elements.header?.querySelector(
-    '[title="Toggle efek 3D"]',
+  appContext.threeScene?.setEnabled(
+    state.sceneEnabled,
   );
 
-  button?.setAttribute(
+  appContext.elements.sceneToggle.checked =
+    state.sceneEnabled;
+
+  appContext.elements.sceneToggleButton.setAttribute(
     "aria-pressed",
     String(state.sceneEnabled),
   );
-}
 
-function updateSceneVisibility() {
-  appContext.elements.viewport?.classList.toggle(
-    "is-disabled",
+  appContext.elements.app?.classList.toggle(
+    "scene-disabled",
     !state.sceneEnabled,
   );
 }
 
-function toggleFPS(event) {
-  state.fpsEnabled = event?.target?.checked ?? !state.fpsEnabled;
+function setFPSEnabled(enabled) {
+  state.fpsEnabled = Boolean(enabled);
 
-  if (appContext.elements.fps) {
-    appContext.elements.fps.hidden = !state.fpsEnabled;
-  }
+  appContext.elements.fps.hidden =
+    !state.fpsEnabled;
+
+  appContext.elements.fpsToggle.checked =
+    state.fpsEnabled;
 }
 
-function initCalculatorKeyboard() {
-  document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
+function bindEvents() {
+  const {
+    menuButton,
+    menu,
+    keypad,
+    historyList,
+    historyClear,
+    sceneToggleButton,
+    sceneToggle,
+    fpsToggle,
+  } = appContext.elements;
 
-    const supportedKeys = new Set([
-      "Enter",
-      "=",
-      "Backspace",
-      "Escape",
-      "%",
-      ".",
-      "+",
-      "-",
-      "*",
-      "/",
-    ]);
+  keypad.addEventListener(
+    "click",
+    handleKeypadClick,
+  );
 
-    if (/^[0-9]$/.test(event.key) || supportedKeys.has(event.key)) {
-      if (["Enter", "=", "Backspace", "Escape"].includes(event.key)) {
-        event.preventDefault();
+  historyList.addEventListener(
+    "click",
+    handleHistoryClick,
+  );
+
+  historyClear.addEventListener(
+    "click",
+    clearHistory,
+  );
+
+  menuButton.addEventListener(
+    "click",
+    () => toggleMenu(),
+  );
+
+  sceneToggleButton.addEventListener(
+    "click",
+    () => setSceneEnabled(!state.sceneEnabled),
+  );
+
+  sceneToggle.addEventListener(
+    "change",
+    (event) => {
+      setSceneEnabled(event.currentTarget.checked);
+    },
+  );
+
+  fpsToggle.addEventListener(
+    "change",
+    (event) => {
+      setFPSEnabled(event.currentTarget.checked);
+    },
+  );
+
+  document.addEventListener(
+    "keydown",
+    handleKeyboard,
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        !menu.hidden &&
+        !menu.contains(event.target) &&
+        !menuButton.contains(event.target)
+      ) {
+        closeMenu();
       }
+    },
+  );
 
-      calculator.handleKeyboardKey(event.key);
-    }
-  });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape" && !menu.hidden) {
+        closeMenu();
+      }
+    },
+  );
 }
 
-function initGlobalInteractions() {
-  document.addEventListener("click", (event) => {
-    const { menu, menuButton } = appContext.elements;
-
-    if (
-      menu &&
-      !menu.hasAttribute("hidden") &&
-      !menu.contains(event.target) &&
-      !menuButton?.contains(event.target)
-    ) {
-      menu.setAttribute("hidden", "");
-      menuButton?.setAttribute("aria-expanded", "false");
-    }
+function initializeThreeScene() {
+  const scene = new (appContext.threeScene = ThreeSceneController)({
+    container: appContext.elements.sceneContainer,
+    fpsElement: appContext.elements.fps,
+    state,
+    onCalculatorKey: handleCalculatorInput,
   });
+
+  scene.init();
+  appContext.threeScene = scene;
+
+  scene.setEnabled(state.sceneEnabled);
 }
 
-function showStartupState() {
+function synchronizeInitialState() {
+  state.sceneEnabled =
+    appContext.elements.sceneToggle.checked;
+
+  state.fpsEnabled =
+    appContext.elements.fpsToggle.checked;
+
+  appContext.elements.fps.hidden =
+    !state.fpsEnabled;
+
   updateDisplay();
-  updateSceneVisibility();
+  renderHistory();
+  updateStatus();
+  updateSceneEnabledUI();
+}
 
-  if (appContext.elements.fps) {
-    appContext.elements.fps.hidden = !state.fpsEnabled;
-  }
+function updateSceneEnabledUI() {
+  const enabled = state.sceneEnabled;
+
+  appContext.elements.sceneToggle.checked =
+    enabled;
+
+  appContext.elements.sceneToggleButton.setAttribute(
+    "aria-pressed",
+    String(enabled),
+  );
+
+  appContext.elements.app?.classList.toggle(
+    "scene-disabled",
+    !enabled,
+  );
+}
+
+function markReady() {
+  appContext.elements.root.dataset.appReady = "true";
+  document.documentElement.dataset.appReady = "true";
 }
 
 function init() {
   try {
-    loadStyles();
-    buildShell();
-    initCalculatorKeyboard();
-    initGlobalInteractions();
+    cacheElements();
+    bindEvents();
+    synchronizeInitialState();
+    initializeThreeScene();
+    updateDisplay();
+    markReady();
 
-    appContext.threeScene = new ThreeSceneController({
-      container: appContext.elements.sceneContainer,
-      fpsElement: appContext.elements.fps,
-      state,
-      onCalculatorKey: handleKey,
-    });
-
-    appContext.threeScene.init();
-
-    showStartupState();
-
-    document.documentElement.dataset.appReady = "true";
-    console.info(`3D Kakulator v${APP_VERSION} initialized.`);
+    console.info(
+      `3D Kakulator v${APP_VERSION} initialized.`,
+    );
   } catch (error) {
-    console.error("3D Kakulator failed to initialize:", error);
+    console.error(
+      "3D Kakulator failed to initialize:",
+      error,
+    );
 
-    const root = document.querySelector("#app");
-    if (root) {
-      root.innerHTML = `
-        <section class="empty-state" role="alert">
-          <strong>Aplikasi gagal dimuat.</strong>
-          <span>${error instanceof Error ? error.message : "Unknown error"}</span>
-        </section>
-      `;
-    }
+    showFatalError(error);
   }
 }
 
+function showFatalError(error) {
+  const root = appContext.elements.root ||
+    document.querySelector("#app");
+
+  if (!root) {
+    return;
+  }
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Unknown error";
+
+  root.dataset.appReady = "false";
+
+  root.innerHTML = `
+    <section class="empty-state" role="alert">
+      <div class="empty-state__content">
+        <div class="empty-state__title">
+          Aplikasi gagal dimuat.
+        </div>
+        <div class="empty-state__description">
+          ${escapeHTML(message)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function escapeHTML(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init, { once: true });
+  document.addEventListener(
+    "DOMContentLoaded",
+    init,
+    { once: true },
+  );
 } else {
   init();
 }
 
-export { appContext, init };
+export {
+  appContext,
+  calculator,
+  init,
+};
